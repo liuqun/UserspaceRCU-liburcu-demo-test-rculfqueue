@@ -2,7 +2,8 @@ CC = gcc
 CFLAGS = -g -Wall
 LIBS = -lurcu-cds -lurcu
 
-output_exe_files = cds_lfq_dequeue
+output_exe_files += cds_lfq_dequeue
+output_exe_files += cds_lfq_enqueue
 all: $(output_exe_files)
 cds_lfq_dequeue: cds_lfq_dequeue.o
 	$(LINK.o) -o $@ $^ $(LIBS)
