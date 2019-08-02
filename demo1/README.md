@@ -1,18 +1,39 @@
+# 配置开发环境
+## 1. CentOS/Fedora系统需要安装的rpm包
+```
+yum install -y epel-release
+yum install -y userspace-rcu-devel
+```
+## 2. Debian/Ubuntu系统需要安装的deb包
+```
+sudo apt-get install -y liburcu-dev
+```
+
 # 样例代码
 文件 dequeue.c 和 enqueue.c 取自 Userspace RCU 项目目录，网址：
 - https://github.com/urcu/userspace-rcu/tree/master/doc/examples/rculfqueue
 
 # 头文件
-头文件`rculfqueue.h`提供RCU无锁队列的抽象数据类型：
+1. 头文件`urcu/rculfqueue.h`提供RCU无锁队列的抽象数据类型：
 ```
 #include <urcu/rculfqueue.h>	/* RCU Lock-free queue */
 ```
 
+2. 头文件`urcu.h`提供前缀为`rcu_`的API函数：
+```
+#include <urcu.h>
+```
+
+3. 头文件`urcu/compiler.h`提供一组C语言宏定义以便于计算数据结构体各成员变量的相对地址偏移量：
+```
+#include <urcu/compiler.h>
+```
+
 # 函数名前缀规则
-1. 无锁队列rculfqueue.h库: 所有函数名和结构体名前缀均为`cds_lfq_`，其中lfq是lock-free queue的缩写；
-   - cds_lfq_node_init_rcu(node)
-   - cds_lfq_init_rcu(queue)
-   - cds_lfq_destroy_rcu()
+1. 无锁队列rculfqueue.h库: 所有函数名和结构体名前缀均为`cds_lfq_`，其中cds是concurrent data structure的缩写，lfq是lock-free queue的缩写；
+   - `cds_lfq_node_init_rcu(node)`
+   - `cds_lfq_init_rcu(queue)`
+   - `cds_lfq_destroy_rcu(queue)`
 
 2. 顶层urcu.h库提供了两个前缀为`rcu_`的库函数: `rcu_register_thread()`和`rcu_unregister_thread()`;
 
@@ -22,10 +43,10 @@
 # 伪代码展示无锁队列API函数调用步骤
 ## 节点定义
 ```
-struct mynode {
+struct my_container {
 	int value;			/* 定义节点内容格式，此处以int整数为例 */
-	struct cds_lfq_node_rcu qnode;	/* Chaining in queue */
-	struct rcu_head my_rcu_head;	/* For call_rcu() */
+	struct cds_lfq_node_rcu member2;
+	struct rcu_head member3;
 };
 ```
 
@@ -44,15 +65,15 @@ pthread_create(..., consumer_func, (void *)&myqueue);
 ```
 const int N_VALUES=3;
 int demo_values[N_VALUES] = {1, 2, 3};
-struct mynode *ptr = NULL;
+struct my_container *ptr = NULL;
 while (1) {
 	int i;
 	for (i=0; i<N_VALUES; i++) {
-		ptr = malloc(sizeof(struct mynode));
+		ptr = malloc(sizeof(struct my_container));
 		ptr->value = demo_values[i];
-		cds_lfq_node_init_rcu(&(ptr->qnode));
+		cds_lfq_node_init_rcu(&(ptr->member2));
 		rcu_read_lock();
-		cds_lfq_enqueue_rcu(myqueue_ptr, &(ptr->qnode))
+		cds_lfq_enqueue_rcu(myqueue_ptr, &(ptr->member2))
 		rcu_read_unlock();
 		ptr = NULL;
 
@@ -65,24 +86,24 @@ while (1) {
 
 【子线程2：作为消费者(consumer)，从缓存队列 myqueue 取出数据, 处理之后销毁数据】
 ```
-struct cds_lfq_node_rcu *qnode_ptr;
-struct mynode           *ptr;
+struct cds_lfq_node_rcu *member2_ptr;
+struct my_container           *ptr;
 while (1) {
 	rcu_read_lock();
-	qnode_ptr = cds_lfq_dequeue_rcu(myqueue_ptr);
+	member2_ptr = cds_lfq_dequeue_rcu(myqueue_ptr);
 	rcu_read_unlock();
-	if (!qnode_ptr) {
+	if (!member2_ptr) {
 		sleep_sevaral_seconds(0.5);// 此时myqueue队列暂时没有新节点可供读取. 间隔 0.5 秒后重试一次
 		continue;
 	}
 
-	ptr = caa_container_of(qnode_ptr, struct mynode, qnode); // 通过qnode_ptr反向推导出外层结构体mynode的大小
+	ptr = caa_container_of(member2_ptr, struct my_container, member2); // 通过member2_ptr反向推导出外层结构体my_container的大小
 
 	// 输出数据
 	printf(" %d", ptr->value);
 
 	// 释放int value对应的内存资源
-	call_rcu(&node->my_rcu_head, free_node);
+	call_rcu(&node->member3, free_node);
 
 	sleep_sevaral_seconds(1.0);
 }
@@ -92,15 +113,15 @@ while (1) {
 static
 void free_node(struct rcu_head *head)
 {
-	struct mynode *ptr = NULL;
+	struct my_container *ptr = NULL;
 
-	ptr = caa_container_of(head, struct mynode, my_rcu_head);
+	ptr = caa_container_of(head, struct my_container, member3);
 	free(ptr);
 }
 ```
 
-# 附录1: 头文件 compiler.h 节选
-1. 宏定义函数 caa_container_of(指向成员变量的指针, mynode结构体, 成员变量名)
+# 附录1: 头文件 `urcu/compiler.h` 节选
+1. 宏定义函数 caa_container_of()用于计算结构体内部成员变量位置相对结构体头部的偏移量字节数：
 ```
 /*
  * caa_container_of - Get the address of an object containing a field.
@@ -116,7 +137,7 @@ void free_node(struct rcu_head *head)
 		(type *)((char *)__ptr - offsetof(type, member));	\
 	})
 ```
-# 附录2: 头文件 rculfqueue.h 节选
+# 附录2: 头文件 `urcu/rculfqueue.h` 节选
 
 ```
 struct cds_lfq_node_rcu {
