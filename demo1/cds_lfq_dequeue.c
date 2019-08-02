@@ -21,7 +21,6 @@
 
 #include <urcu.h>		/* RCU flavor */
 #include <urcu/rculfqueue.h>	/* RCU Lock-free queue */
-#include <urcu/compiler.h>	/* For CAA_ARRAY_SIZE */
 
 /*
  * 用户数据容器

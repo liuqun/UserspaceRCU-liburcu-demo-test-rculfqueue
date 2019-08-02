@@ -19,7 +19,6 @@
 
 #include <urcu.h>		/* RCU flavor */
 #include <urcu/rculfqueue.h>	/* RCU Lock-free queue */
-#include <urcu/compiler.h>	/* For CAA_ARRAY_SIZE */
 
 /*
  * Nodes populated into the queue.
@@ -32,6 +31,7 @@ struct mynode {
 int main(int argc, char **argv)
 {
 	int values[] = { -5, 42, 36, 24, };
+	unsigned int TOTAL_VALUES = sizeof(values)/sizeof(values[0]);
 	struct cds_lfq_queue_rcu myqueue;	/* Queue */
 	unsigned int i;
 	int ret = 0;
@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 	/*
 	 * Enqueue nodes.
 	 */
-	for (i = 0; i < CAA_ARRAY_SIZE(values); i++) {
+	for (i = 0; i < TOTAL_VALUES; i++) {
 		struct mynode *node;
 
 		node = malloc(sizeof(*node));
