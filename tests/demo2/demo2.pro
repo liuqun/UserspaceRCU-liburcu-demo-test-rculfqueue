@@ -4,7 +4,7 @@ CONFIG -= app_bundle
 CONFIG -= qt
 
 SOURCES += \
-        main.c
+        demo2_main.c
 
 unix: LIBS += -L$$OUT_PWD/../../src/ -lLockFreeQueue
 
@@ -15,3 +15,7 @@ unix: PRE_TARGETDEPS += $$OUT_PWD/../../src/libLockFreeQueue.a
 
 unix: CONFIG += link_pkgconfig
 unix: PKGCONFIG += liburcu-cds liburcu
+
+unix: QMAKE_CFLAGS += -pthread
+unix: QMAKE_CXXFLAGS += -pthread
+unix: QMAKE_LFLAGS += -pthread
