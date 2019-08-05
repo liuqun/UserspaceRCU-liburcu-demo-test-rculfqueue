@@ -6,7 +6,7 @@
 #include <string.h> // 用到 memset()、strerror() 等函数
 
 /* POSIX.1 IEEE 标准头文件 */
-#include <threads.h> // POSIX 线程库: 用到 pthread_create() 等函数
+#include <pthread.h> // POSIX 线程库: 用到 pthread_create() 等函数
 #include <unistd.h> // Unix 标准库: 用到 sleep() 等函数
 
 /* 第三方 SDK 提供的头文件 */
