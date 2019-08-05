@@ -31,7 +31,7 @@ void *producer_thrd_1st(void *arg){
     rcu_register_thread();//RCU注册当前线程
 
     int values[] = { 1, 3, 5, 7, 9, 11, 13, INT32_MAX};
-	unsigned TOTAL_VALUES = sizeof(values)/sizeof(values[0]);
+    unsigned TOTAL_VALUES = sizeof(values)/sizeof(values[0]);
     for (unsigned i = 0; i < TOTAL_VALUES; i++) {
         CONTAINER *container_ptr = CONTAINER_new(values[i]);
         if (!container_ptr) {
@@ -70,7 +70,7 @@ void *producer_thrd_2nd(void *arg){
     rcu_register_thread();//RCU注册当前线程
 
     int values[] = { 2, 4, 6, 8, };
-	unsigned TOTAL_VALUES = sizeof(values)/sizeof(values[0]);
+    unsigned TOTAL_VALUES = sizeof(values)/sizeof(values[0]);
     for (unsigned i = 0; i < TOTAL_VALUES; i++) {
         CONTAINER *container_ptr = CONTAINER_new(values[i]);
         if (!container_ptr) {
