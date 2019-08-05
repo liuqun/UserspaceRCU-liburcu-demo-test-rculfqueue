@@ -165,7 +165,8 @@ int main()
         if (ec) {
             fprintf(stderr, "Error destroying queue (non-empty), Error code: ec = %d\n", ec);
         }
-        rcu_unregister_thread();//RCU注销当前线程
     }
+
+    rcu_unregister_thread();//RCU注销当前线程
     return 0;
 }
