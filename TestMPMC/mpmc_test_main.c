@@ -18,7 +18,6 @@
 
 /* 定义若干“生产者”/“消费者”线程 */
 
-static
 void *producer_thrd_1st(void *arg){
     // producer 生产者线程-1:
     // 监听 UDP 8000 端口，每收到一个UDP数据包，执行一次enqueue操作。
@@ -28,11 +27,13 @@ void *producer_thrd_1st(void *arg){
 
     struct cds_lfq_queue_rcu *queue = (struct cds_lfq_queue_rcu *) arg;
 
-    rcu_register_thread();//RCU注册当前线程
+    rcu_register_thread();
 
-    int values[] = { 1, 3, 5, 7, 9, 11, 13, INT32_MAX};
+    int values[] = { 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, INT32_MAX};
     unsigned TOTAL_VALUES = sizeof(values)/sizeof(values[0]);
     for (unsigned i = 0; i < TOTAL_VALUES; i++) {
+        sleep(2); // TODO: (使用随机数模拟真实的UDP收包间隔时间)
+
         CONTAINER *container_ptr = CONTAINER_new(values[i]);
         if (!container_ptr) {
             goto TAG_ERROR_REPORT;
@@ -42,22 +43,19 @@ void *producer_thrd_1st(void *arg){
         rcu_read_lock();
         cds_lfq_enqueue_rcu(queue, &container_ptr->member2); // 无锁队列的 enqueue 操作只关注取成员变量 member2 的指针
         rcu_read_unlock();
-
-        sleep(2); // 间隔若干秒后再执行下一个enqueue (模拟真实的UDP收包间隔时间)
     }
 
-    rcu_unregister_thread();//RCU注销当前线程
+    rcu_unregister_thread();
     return NULL;
 
     TAG_ERROR_REPORT:{
         fprintf(stderr, "Error: no memory to allocate new queue item!\n");
         fprintf(stderr, "Error: errno=%d, message=%s\n", errno, strerror(errno));
     }
-    rcu_unregister_thread();//RCU注销当前线程
+    rcu_unregister_thread();
     return NULL;
 }
 
-static
 void *producer_thrd_2nd(void *arg){
     // producer 生产者线程-2:
     // 监听 UDP 8001 端口，每收到一个UDP数据包，执行一次enqueue操作。
@@ -67,11 +65,13 @@ void *producer_thrd_2nd(void *arg){
 
     struct cds_lfq_queue_rcu *queue = (struct cds_lfq_queue_rcu *) arg;
 
-    rcu_register_thread();//RCU注册当前线程
+    rcu_register_thread();
 
-    int values[] = { 2, 4, 6, 8, };
+    int values[] = { 300, 600, 900, 1200, };
     unsigned TOTAL_VALUES = sizeof(values)/sizeof(values[0]);
     for (unsigned i = 0; i < TOTAL_VALUES; i++) {
+        sleep(3); // TODO: (使用随机数模拟真实的UDP收包间隔时间)
+
         CONTAINER *container_ptr = CONTAINER_new(values[i]);
         if (!container_ptr) {
             goto TAG_ERROR_REPORT;
@@ -81,18 +81,16 @@ void *producer_thrd_2nd(void *arg){
         rcu_read_lock();
         cds_lfq_enqueue_rcu(queue, &container_ptr->member2); // 无锁队列的 enqueue 操作只关注取成员变量 member2 的指针
         rcu_read_unlock();
-
-        sleep(3); // 间隔若干秒后再执行下一个enqueue (模拟真实的UDP收包间隔时间)
     }
 
-    rcu_unregister_thread();//RCU注销当前线程
+    rcu_unregister_thread();
     return NULL;
 
     TAG_ERROR_REPORT:{
         fprintf(stderr, "Error: no memory to allocate new queue item!\n");
         fprintf(stderr, "Error: errno=%d, message=%s\n", errno, strerror(errno));
     }
-    rcu_unregister_thread();//RCU注销当前线程
+    rcu_unregister_thread();
     return NULL;
 }
 
@@ -108,21 +106,20 @@ int main()
 
     struct cds_lfq_queue_rcu myqueue;
 
-    rcu_register_thread();//RCU注册当前线程
+    rcu_register_thread();
 
     /* Init the queue */
     cds_lfq_init_rcu(&myqueue, call_rcu);
 
-    // producer 生产者线程-1st:
+    /* 启动第一个生产者线程 producer_thrd_1st: */
     // 子线程中模拟以下动作：监听某个IPv4-UDP套接字端口，每收到一个UDP数据包，执行一次enqueue操作。约定收到某个结束符后跳出无限循环，退出线程。
     pthread_create(&producer_thrd_list[0], NULL_PTHREAD_ATTR, producer_thrd_1st, (void *)&myqueue);
-    // producer 生产者线程-2nd:
+    /* 启动另一个生产者线程 producer_thrd_2nd: */
     // 子线程中模拟以下动作：监听另一个IPv6-UDP套接字端口，每收到一个UDP数据包，执行一次enqueue操作。约定收到某个结束符后跳出无限循环，退出线程。
     pthread_create(&producer_thrd_list[1], NULL_PTHREAD_ATTR, producer_thrd_2nd, (void *)&myqueue);
 
-    // cosumer(消费者线程): 对队列进行dequeue操作
-    // Dequeue each node from the queue. Those will be dequeued from
-    // the oldest (first enqueued) to the newest (last enqueued).
+    /* cosumer 消费者线程: 对队列进行dequeue操作 */
+    // Dequeue each node from the queue. Those will be dequeued from the oldest (first enqueued) to the newest (last enqueued).
     printf("dequeued content:");
     fflush(stdout);
     for (;;) {
@@ -153,6 +150,7 @@ int main()
     }
     printf("\n");
 
+    /* 主进程等待两个生产者子线程结束 */
     producer_retcode_ptr = UNDEFINED_RETCODE;
     pthread_join(producer_thrd_list[0], &producer_retcode_ptr);
     producer_retcode_ptr = UNDEFINED_RETCODE;
@@ -167,6 +165,6 @@ int main()
         }
     }
 
-    rcu_unregister_thread();//RCU注销当前线程
+    rcu_unregister_thread();
     return 0;
 }
