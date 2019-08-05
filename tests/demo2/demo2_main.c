@@ -113,9 +113,11 @@ int main()
     /* Init the queue */
     cds_lfq_init_rcu(&myqueue, call_rcu);
 
-    // producer 生产者线程1:
-    // 子线程中模拟以下动作：监听UDP套接字端口，每收到一个UDP数据包，执行一次enqueue操作。约定收到某个结束符后跳出无限循环，退出线程。
+    // producer 生产者线程-1st:
+    // 子线程中模拟以下动作：监听某个IPv4-UDP套接字端口，每收到一个UDP数据包，执行一次enqueue操作。约定收到某个结束符后跳出无限循环，退出线程。
     pthread_create(&producer_thrd_list[0], NULL_PTHREAD_ATTR, producer_thrd_1st, (void *)&myqueue);
+    // producer 生产者线程-2nd:
+    // 子线程中模拟以下动作：监听另一个IPv6-UDP套接字端口，每收到一个UDP数据包，执行一次enqueue操作。约定收到某个结束符后跳出无限循环，退出线程。
     pthread_create(&producer_thrd_list[1], NULL_PTHREAD_ATTR, producer_thrd_2nd, (void *)&myqueue);
 
     // cosumer(消费者线程): 对队列进行dequeue操作
