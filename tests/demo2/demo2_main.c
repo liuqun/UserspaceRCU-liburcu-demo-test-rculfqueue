@@ -22,7 +22,7 @@ static
 void *producer_thrd_1st(void *arg){
     // producer 生产者线程-1:
     // 监听 UDP 8000 端口，每收到一个UDP数据包，执行一次enqueue操作。
-    // 约定: 循环收包，直到收到某个的命令包后跳出无限循环，退出线程。
+    // 约定: 循环收包，直到收到某个特殊的命令包后跳出无限循环，退出线程。
     //
     // (为了简化调试，以下代码使用写死的临时数据代替真实的UDP套接字读写)
 
@@ -43,7 +43,7 @@ void *producer_thrd_1st(void *arg){
         cds_lfq_enqueue_rcu(queue, &container_ptr->member2); // 无锁队列的 enqueue 操作只关注取成员变量 member2 的指针
         rcu_read_unlock();
 
-        sleep(2); // 间隔若干秒后再执行下一个enqueue
+        sleep(2); // 间隔若干秒后再执行下一个enqueue (模拟真实的UDP收包间隔时间)
     }
 
     rcu_unregister_thread();//RCU注销当前线程
@@ -61,7 +61,7 @@ static
 void *producer_thrd_2nd(void *arg){
     // producer 生产者线程-2:
     // 监听 UDP 8001 端口，每收到一个UDP数据包，执行一次enqueue操作。
-    // 约定: 循环收包，直到收到某个的命令包后跳出无限循环，退出线程。
+    // 约定: 循环收包，直到收到某个特殊的命令包后跳出无限循环，退出线程。
     //
     // (为了简化调试，以下代码使用写死的临时数据代替真实的UDP套接字读写)
 
@@ -82,7 +82,7 @@ void *producer_thrd_2nd(void *arg){
         cds_lfq_enqueue_rcu(queue, &container_ptr->member2); // 无锁队列的 enqueue 操作只关注取成员变量 member2 的指针
         rcu_read_unlock();
 
-        sleep(3); // 间隔若干秒后再执行下一个enqueue
+        sleep(3); // 间隔若干秒后再执行下一个enqueue (模拟真实的UDP收包间隔时间)
     }
 
     rcu_unregister_thread();//RCU注销当前线程
