@@ -4,9 +4,9 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h> // 用到 memset()、strerror() 等函数
+#include <threads.h> // C11标准线程库: 用到 thrd_create()、thrd_join() 等函数
 
 /* POSIX.1 IEEE 标准头文件 */
-#include <pthread.h> // POSIX 线程库: 用到 pthread_create() 等函数
 #include <unistd.h> // Unix 标准库: 用到 sleep() 等函数
 
 /* 第三方 SDK 提供的头文件 */
@@ -19,7 +19,7 @@
 /* 定义若干“生产者”/“消费者”线程 */
 
 static
-void *producer_thrd_1st(void *arg){
+int producer_thrd_1st(void *arg){
     // producer 生产者线程-1:
     // 监听 UDP 8000 端口，每收到一个UDP数据包，执行一次enqueue操作。
     // 约定: 循环收包，直到收到某个特殊的命令包后跳出无限循环，退出线程。
@@ -47,18 +47,18 @@ void *producer_thrd_1st(void *arg){
     }
 
     rcu_unregister_thread();//RCU注销当前线程
-    return NULL;
+    return 0;
 
     TAG_ERROR_REPORT:{
         fprintf(stderr, "Error: no memory to allocate new queue item!\n");
         fprintf(stderr, "Error: errno=%d, message=%s\n", errno, strerror(errno));
     }
     rcu_unregister_thread();//RCU注销当前线程
-    return NULL;
+    return 0;
 }
 
 static
-void *producer_thrd_2nd(void *arg){
+int producer_thrd_2nd(void *arg){
     // producer 生产者线程-2:
     // 监听 UDP 8001 端口，每收到一个UDP数据包，执行一次enqueue操作。
     // 约定: 循环收包，直到收到某个特殊的命令包后跳出无限循环，退出线程。
@@ -86,25 +86,21 @@ void *producer_thrd_2nd(void *arg){
     }
 
     rcu_unregister_thread();//RCU注销当前线程
-    return NULL;
+    return 0;
 
     TAG_ERROR_REPORT:{
         fprintf(stderr, "Error: no memory to allocate new queue item!\n");
         fprintf(stderr, "Error: errno=%d, message=%s\n", errno, strerror(errno));
     }
     rcu_unregister_thread();//RCU注销当前线程
-    return NULL;
+    return 0;
 }
 
 
-#define NULL_PTHREAD_ATTR NULL
-static int UNDEFINED = -1;
-static void * const UNDEFINED_RETCODE = (void *)&UNDEFINED;
-
 int main()
 {
-    pthread_t producer_thrd_list[] = {0, 0};
-    void *producer_retcode_ptr = UNDEFINED_RETCODE;
+    thrd_t producer_thrd_list[] = {0, 0};
+    int producer_retcode_list[] = {-1, -1};
 
     struct cds_lfq_queue_rcu myqueue;
 
@@ -115,10 +111,10 @@ int main()
 
     // producer 生产者线程-1st:
     // 子线程中模拟以下动作：监听某个IPv4-UDP套接字端口，每收到一个UDP数据包，执行一次enqueue操作。约定收到某个结束符后跳出无限循环，退出线程。
-    pthread_create(&producer_thrd_list[0], NULL_PTHREAD_ATTR, producer_thrd_1st, (void *)&myqueue);
+    thrd_create(&producer_thrd_list[0], producer_thrd_1st, (void *)&myqueue);
     // producer 生产者线程-2nd:
     // 子线程中模拟以下动作：监听另一个IPv6-UDP套接字端口，每收到一个UDP数据包，执行一次enqueue操作。约定收到某个结束符后跳出无限循环，退出线程。
-    pthread_create(&producer_thrd_list[1], NULL_PTHREAD_ATTR, producer_thrd_2nd, (void *)&myqueue);
+    thrd_create(&producer_thrd_list[1], producer_thrd_2nd, (void *)&myqueue);
 
     // cosumer(消费者线程): 对队列进行dequeue操作
     // Dequeue each node from the queue. Those will be dequeued from
@@ -153,10 +149,8 @@ int main()
     }
     printf("\n");
 
-    producer_retcode_ptr = UNDEFINED_RETCODE;
-    pthread_join(producer_thrd_list[0], &producer_retcode_ptr);
-    producer_retcode_ptr = UNDEFINED_RETCODE;
-    pthread_join(producer_thrd_list[1], &producer_retcode_ptr);
+    thrd_join(producer_thrd_list[0], &producer_retcode_list[0]);
+    thrd_join(producer_thrd_list[1], &producer_retcode_list[1]);
 
     /* Release memory used by the queue. */
     {

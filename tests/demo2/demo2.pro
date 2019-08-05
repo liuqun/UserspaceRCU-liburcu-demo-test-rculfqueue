@@ -16,6 +16,6 @@ unix: PRE_TARGETDEPS += $$OUT_PWD/../../src/libLockFreeQueue.a
 unix: CONFIG += link_pkgconfig
 unix: PKGCONFIG += liburcu-cds liburcu
 
-unix: QMAKE_CFLAGS += -pthread
-unix: QMAKE_CXXFLAGS += -pthread
+unix: QMAKE_CFLAGS += -std=c11 -pthread
+unix: QMAKE_CXXFLAGS += -std=c++11 -pthread
 unix: QMAKE_LFLAGS += -pthread
