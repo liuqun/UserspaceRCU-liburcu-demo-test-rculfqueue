@@ -122,6 +122,7 @@ int main()
     // Dequeue each node from the queue. Those will be dequeued from
     // the oldest (first enqueued) to the newest (last enqueued).
     printf("dequeued content:");
+    fflush(stdout);
     for (;;) {
         CONTAINER *container_ptr = NULL;
         struct cds_lfq_node_rcu *member2_ptr = NULL;
@@ -146,6 +147,7 @@ int main()
             break;
         }
         printf(" %d", value);
+        fflush(stdout);
     }
     printf("\n");
 
